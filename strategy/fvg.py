@@ -42,6 +42,8 @@ def find_triggers(df15: pd.DataFrame, setups: pd.DataFrame, fvgs: pd.DataFrame,
         >= penetration; entry = that close, stop = top of the gap.
       * A 15m close beyond the setup's sweep extreme kills the setup; scanning also stops at
         `expires_at`.
+      * If one candle completes the rejection of several gaps, only the earliest-formed gap
+        produces the trigger.
     """
     idx = df15.index
     O = df15["open"].to_numpy(); H = df15["high"].to_numpy()
@@ -92,5 +94,8 @@ def find_triggers(df15: pd.DataFrame, setups: pd.DataFrame, fvgs: pd.DataFrame,
                         fvg_known_at=z["known"], penetration=z["maxpen"]))
     if not rows:
         return pd.DataFrame(columns=TRIG_COLS)
-    return pd.DataFrame(rows, columns=TRIG_COLS).sort_values(["time", "setup_id"], kind="stable"
-                                                              ).reset_index(drop=True)
+    out = pd.DataFrame(rows, columns=TRIG_COLS)
+    # one entry per setup per bar: if one candle rejects several gaps, the earliest-formed gap wins
+    out = out.sort_values(["time", "setup_id", "fvg_known_at"], kind="stable")
+    out = out.drop_duplicates(["setup_id", "time"], keep="first")
+    return out.reset_index(drop=True)

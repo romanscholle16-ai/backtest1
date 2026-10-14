@@ -184,3 +184,19 @@ def test_no_lookahead_truncation_random():
         f = full[full.time <= T].drop(columns="setup_id").reset_index(drop=True)
         q = part[part.time <= T].drop(columns="setup_id").reset_index(drop=True)
         pd.testing.assert_frame_equal(f, q)
+
+
+def test_two_gaps_rejected_by_one_candle_gives_single_trigger_for_earliest_gap():
+    # gap A [100,104] forms first; gap B [96.5, 98] forms later; one candle sweeps both and closes below both
+    rows = LEG + [(96, 97, 95, 96.2), (96.2, 96.4, 94, 94.5), (94.5, 94.8, 93, 93.5)]
+    df = bars(rows)
+    f = F.detect_fvgs(df)
+    assert (f.direction == "bear").sum() >= 2
+    # candle that spikes through both gaps (to 104) and closes under the lowest gap bottom
+    df = bars(rows + [(93.5, 104.5, 92, 92.5)])
+    f = F.detect_fvgs(df)
+    t = F.find_triggers(df, setup_row(armed=3), f, P)
+    assert t.duplicated(["setup_id", "time"]).sum() == 0
+    hit = t[t.time == at(len(rows) + 1)]
+    assert len(hit) == 1
+    assert hit.iloc[0].fvg_known_at == at(3) and hit.iloc[0].stop == 104   # gap A formed first
