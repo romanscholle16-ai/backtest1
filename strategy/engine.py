@@ -66,6 +66,7 @@ def execute(prep: Prepared, p: Params = Params()) -> Result:
             entry=plan.entry, stop=plan.stop, tp1=plan.tp1, tp2=plan.tp2, target=plan.target,
             risk_pct_of_price=plan.risk / plan.entry * 100, gross_r=res.gross_r, fee_r=res.fee_r,
             net_r=res.net_r, exits="/".join(f"{g.reason}" for g in res.legs), open_at_end=res.open_at_end,
+            legs=";".join(f"{g.reason}@{g.price:.2f}@{g.time.isoformat()}@{g.frac:.4f}" for g in res.legs),
             risk_amt=risk_amt, pnl=pnl, equity=equity, leverage=p.risk_pct * plan.entry / plan.risk))
     trades = pd.DataFrame(rows)
     sk = pd.DataFrame(skipped, columns=["time", "setup_id", "reason"])
